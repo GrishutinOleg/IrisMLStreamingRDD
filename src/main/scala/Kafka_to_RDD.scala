@@ -54,10 +54,10 @@ object Kafka_to_RDD extends App {
     data.show()
 
 
-    streamingContext.start()
-    streamingContext.awaitTermination()
-
   }
+
+  streamingContext.start()
+  streamingContext.awaitTermination()
 
 
   object SparkSessionSingleton {
@@ -72,6 +72,8 @@ object Kafka_to_RDD extends App {
     }
   }
 
+  //streamingContext.start()
+  //streamingContext.awaitTermination()
 
 
 }

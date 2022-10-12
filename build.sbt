@@ -17,11 +17,11 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka-clients"                   % kafkaVersion
 )
 
-/*assembly / assemblyMergeStrategy := {
+assembly / assemblyMergeStrategy := {
   case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
   case m if m.toLowerCase.matches("meta-inf.*\\.sf$") => MergeStrategy.discard
   case "reference.conf" => MergeStrategy.concat
   case x: String if x.contains("UnusedStubClass.class") => MergeStrategy.first
   case _ => MergeStrategy.first
 }
-*/
+
