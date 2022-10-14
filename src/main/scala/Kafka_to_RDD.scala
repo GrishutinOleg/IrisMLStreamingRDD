@@ -1,4 +1,6 @@
+import com.esotericsoftware.kryo.serializers.DefaultSerializers.StringSerializer
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming._
@@ -6,7 +8,9 @@ import org.apache.spark.streaming.kafka010._
 import org.apache.spark.ml.PipelineModel
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
+
 import java.util.Properties
+import org.apache.spark.sql.functions._
 
 
 object Kafka_to_RDD extends App {
@@ -38,6 +42,12 @@ object Kafka_to_RDD extends App {
     .map(_.value)
     .map(_.replace("\"", "").split("|"))
 
+  val brokersout = "localhost:9092"
+  val topicout = "iris_rdd_predictition"
+
+  val propsout: Properties = new Properties()
+  propsout.put("bootstrap.servers", brokersout)
+
   lines.foreachRDD { rdd =>
 
     val spark = SparkSessionSingleton.getInstance(rdd.sparkContext.getConf)
@@ -53,11 +63,39 @@ object Kafka_to_RDD extends App {
 
     data.show()
 
+    if (data.count > 0) {
+      val prediction = model.transform(data)
 
-  }
+      prediction.select("sepal_length", "sepal_width", "petal_length", "petal_width", "predictedLabel")
 
-  streamingContext.start()
-  streamingContext.awaitTermination()
+      val assembleddata = prediction.withColumn("value",
+        concat(col("sepal_length"), lit("|")
+          , col("sepal_width"), lit("|")
+          , col("petal_length"), lit("|")
+          , col("petal_width"), lit("|")
+          , col("predictedLabel")
+        ))
+
+      val selecteddata = assembleddata
+        .select("value")
+        .selectExpr( "CAST(value AS STRING)")
+        .foreachPartition { partition =>
+          val producer = new KafkaProducer(propsout, new StringSerializer, new StringSerializer)
+          partition.foreach { record =>
+            producer.send(new ProducerRecord(topicout, record))
+          }
+          producer.close()
+        }
+
+    }
+
+    streamingContext.start()
+    streamingContext.awaitTermination()
+
+    }
+
+  //streamingContext.start()
+  //streamingContext.awaitTermination()
 
 
   object SparkSessionSingleton {
